@@ -168,7 +168,21 @@ By the end of the lab, the map was lighting up with thousands of attacks from al
 
 
 
+## 🧠 Skills Learned
 
+* **Cloud Infrastructure:** Hands-on experience deploying and configuring Azure resources, including Virtual Machines, Virtual Networks, and Network Security Groups.
+* **SIEM Administration:** configuring Microsoft Sentinel, connecting data sources (Log Analytics Workspace), and managing data collection rules.
+* **KQL (Kusto Query Language):** Writing complex queries to filter logs, extract key data (IP addresses), and generate custom analytics rules.
+* **SOAR & Automation:** Designing automated workflows using Azure Logic Apps to bridge the gap between security detection and incident response.
+* **Network Security:** Understanding firewall management (Windows Defender Firewall) and public/private IP networking concepts.
+* **Troubleshooting:** Diagnosing and resolving real-world deployment issues, including region-specific policy restrictions and API connector limitations.
+
+## 🔮 Future Improvements
+
+* **Email Integration:** Integrate Outlook or Gmail connectors to send detailed email reports to security admins (currently restricted by Azure for Students policy).
+* **Advanced Analytics:** Develop more sophisticated KQL rules to detect other attack vectors beyond Brute Force (e.g., Port Scanning, Privilege Escalation).
+* **Automated Remediation:** Update the playbook to not just notify, but automatically block the attacker's IP address on the Network Security Group (NSG) level.
+* **Threat Intelligence:** Connect Sentinel to external threat intelligence feeds to correlate attacker IPs with known malicious actors.
 
 
 
