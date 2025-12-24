@@ -1,1 +1,183 @@
-# Azure-Sentinel-SIEM-Honeypot-Automated-Response-SOAR-
+# Azure Sentinel SIEM: Honeypot & Automated Response (SOAR)
+
+
+## Project Overview
+The primary objective of this initiative was to deploy a Cloud Honeypot within the Azure ecosystem, designed specifically to attract and log real-world cyber threats. Rather than just collecting data, the project aimed to ingest these logs into Microsoft Sentinel (SIEM) to visualize global attack patterns on a live map.
+
+I also wanted to explore SOAR (Security Orchestration, Automation, and Response) capabilities to enhance the lab's functionality. This involved constructing an automated playbook intended to detect specific incident types, specifically Brute Force attempts, and subsequently trigger a notification workflow via Microsoft Teams that includes the attacker's IP address.
+
+
+## Technologies Used
+* **Microsoft Azure**: Virtual Machines, Virtual Network, Network Security Groups.
+* **Microsoft Sentinel**: SIEM (Security Information and Event Management).
+* **Azure Log Analytics Workspace (LAW)**: Ingesting and querying logs (KQL).
+* **Azure Logic Apps**: Orchestration and automation (SOAR).
+* **PowerShell**: Scripting to disable firewalls and configure the VM.
+* **KQL (Kusto Query Language)**: Writing custom analytics rules.
+
+---
+
+
+
+## Step-by-Step Implementation
+
+### Phase 1: The Setup (Virtual Machine & Network)
+The first step seemed pretty straightforward: spinning up a generic Windows 10 Virtual Machine in Azure. Since the goal was to make an effective honeypot, it needed to be fully exposed to the internet.
+
+
+![Creating VM](Images/image1)
+*Initial attempt at creating the Virtual Network.*
+
+**Challenge Encountered:** The deployment did not go smoothly at first; I encountered errors likely caused by Azure for Students policy restrictions regarding specific geographic regions. Troubleshooting involved verifying which regions were permitted and subsequently redeploying the resources in `East US 2`.
+
+
+
+![Policy Error](Images/image2)
+*Troubleshooting region policy errors.*
+
+
+
+### Phase 2: Making it Vulnerable (The Honeypot)
+With the VM successfully running, the priority shifted to lowering its defenses. I utilized a PowerShell script to strip away the Windows Firewall on all profiles, which essentially invites potential attackers to attempt connections via RDP (Remote Desktop Protocol).
+
+
+![Disabling Firewall](Images/image3)
+*Running `NetSh Advfirewall set allprofiles state off` to expose the VM.*
+
+
+
+To confirm the exposure was successful, I pinged the VM from my local machine. While the initial pings timed out (before I turned off the firewall), the pings succeeded once the script was executed, showing the VM was accessible from the public internet.
+
+
+![Ping Test](Images/image4)
+*Successful ping indicating the VM is reachable from the public internet.*
+
+
+
+
+### Phase 3: Log Ingestion & Sentinel Configuration
+Acting as a repository for the collected security events, a **Log Analytics Workspace (LAW)** was established. I connected the VM to this workspace and enabled **Microsoft Defender for Cloud**, which allows for the collection of data.
+
+
+![Defender Plans](Images/image5)
+*Enabling Defender plans to capture comprehensive security logs.*
+
+I configured a **Data Collection Rule (DCR)** to specifically ingest *All Security Events* from the Windows VM, ensuring I captured every failed login attempt.
+
+
+
+![Data Collection Rule](Images/image6)
+
+### Phase 4: Attack Visualization (The Map)
+
+Using KQL (Kusto Query Language), I queried the `SecurityEvent` logs to identify failed login attempts (EventID 4625). I then connected this data to a **Workbook** in Sentinel to visualize the physical location of the attackers.
+
+
+
+![Initial Map](Images/image7)
+*The map after 2 days of exposure. I started seeing hits from the US, China, and Europe.*
+
+
+
+### Phase 5: Automation (SOAR) Integration
+
+This was the most complex phase. My goal was to send an email alert whenever a brute force attack was detected.
+
+**Challenge Encountered:** The Logic App failed to connect to Gmail/Outlook due to university security policies blocking third-party API connections for student accounts.
+
+
+
+![Email Policy Error](Images/image8)
+
+*Workflow validation failed due to organizational policy restrictions on email connectors.*
+
+
+
+**Resolution:** I pivoted to using **Microsoft Teams**. I reconfigured the playbook to post a message as a *Flow Bot* into a private Teams channel.
+
+
+
+![Teams Logic](Images/image9)
+*Redesigned Logic App workflow using Microsoft Teams.*
+
+
+
+### Phase 6: The "ActionConditionFailed" Error
+
+After setting up the Logic App, I ran a test, but the messages weren't sending. The run history showed the action was *Skipped.*
+
+
+
+![Logic App Error](Images/image10)
+*Troubleshooting the skipped actions in Azure Run History.*
+
+
+
+**Root Cause:** The incident trigger in Sentinel was not successfully mapping the *Attacker IP* to the *Entity* field. The Logic App was looking for an IP to ban/report, found `null`, and skipped the step.
+
+
+
+**Fix:** I wrote a custom Analytics Rule in Sentinel with strict Entity Mapping:
+
+```kusto
+
+SecurityEvent 
+| where EventID == 4625 
+| summarize FailureCount = count() by IpAddress, EventID 
+| where FailureCount >= 10
+```
+
+
+
+I mapped the `IpAddress` column to the `IP` Entity in the rule configuration.
+
+
+
+![Entity Mapping](Images/image11)
+*Configuring the Analytics Rule to correctly map IP addresses to Entities.*
+
+
+
+### Final Results
+
+After fixing the entity mapping and generating a fresh brute-force attack (by spamming failed logins via RDP), the system worked perfectly.
+
+
+
+1.  **Sentinel** detected the attack.
+
+2.  The **Automation Rule** triggered the playbook.
+
+3.  **Teams** received the alert with the attacker's IP.
+
+
+
+![Final Success](Images/image12)
+*Successful automated alert delivered to Microsoft Teams.*
+
+
+
+By the end of the lab, the map was lighting up with thousands of attacks from all over the world, proving the effectiveness of the honeypot.
+
+
+
+![Final Map](Images/image13)
+*Final visualization of global attacks.*
+
+
+
+
+
+
+
+
+
+
+
+
+<sub>Project Start: 12/19/2025</sub>
+
+
+
+<sub>Project End: 12/24/2025</sub>
+
