@@ -166,24 +166,70 @@ By the end of the lab, the map was lighting up with thousands of attacks from al
 
 
 
+## Phase 7: The Upgrade (Active Defense)
+*Project Update (Jan 2026):* After successfully monitoring attacks for a week, I decided to revisit the project to implement the "SOAR" (Response) capabilities. The goal was to transition from "Passive Logging" to "Active Defense" by automatically blocking the IP addresses of attackers.
+
+### 1. Architecture Design
+I configured a **Logic App** (Playbook) to act as the orchestrator. The workflow uses the following logic:
+1.  **Trigger:** When a Microsoft Sentinel Incident is created.
+2.  **Action:** Extract the IP address entity from the incident.
+3.  **Notification:** Send a message to Microsoft Teams to alert the security analyst (me).
+4.  **Remediation:** Trigger an Azure Automation Runbook (PowerShell) to block the IP.
+
+![Logic App Workflow](Images/image14)
+*The updated Logic App chain: Trigger -> Get IPs -> Loop -> Teams Alert -> Blocking Script.*
+
+### 2. Challenges & Solutions
+**Challenge 1: The "Parking Spot" Conflict**
+* *Issue:* My remediation script was hardcoded to create a block rule at **Priority 100**. However, my existing "Honeypot Allow All" rule was also sitting at Priority 100. The script failed because two rules cannot share the same priority.
+* *Solution:* I manually moved the "Allow All" rule to Priority 200, reserving the highest priority (100) specifically for the automation blocklist.
+
+**Challenge 2: Deprecated Azure Modules (The Version Conflict)**
+* *Issue:* My student Azure environment was running an older version of the `Az.Network` module. The standard command to update NSG rules (`SourceAddressPrefixes`) failed because the property did not exist in the older schema.
+* *Solution:* I engineered a "Compatibility Mode" PowerShell script. I forced the array of attacker IPs into the legacy `SourceAddressPrefix` (singular) parameter, which the older module version accepted.
+
+![Automation Job Success](Images/image15)
+*The Automation Job log showing the successful execution of the V5 "Legacy Mode" script.*
+
+### 3. The PowerShell Logic
+The Runbook performs the following steps:
+1.  Authenticates using a Managed Identity.
+2.  Retrieves the current Network Security Group (NSG).
+3.  Checks if the "Sentinel-Blocklist-Auto" rule exists.
+    * *If yes:* It appends the new attacker IP to the existing list.
+    * *If no:* It creates the rule and adds the first IP.
+4.  Updates the NSG configuration in Azure.
+
+### 4. Final Results
+The system successfully blocked malicious IPs from China and the Netherlands automatically.
+* **Time to Response:** Reduced from minutes/hours (manual) to ~3 seconds (automated).
+* **Verification:** The NSG "Inbound Security Rules" now shows a `Sentinel-Blocklist-Auto` rule containing a growing list of blocked IPs.*
+
+
+
+![Automation Job Success](Images/image16)
+*Evidence of the Automation working: The NSG rule automatically populated with the attacker IPs.*
 
 
 ## Skills Learned
 
 * **Cloud Infrastructure:** Hands-on experience deploying and configuring Azure resources, including Virtual Machines, Virtual Networks, and Network Security Groups.
-* **SIEM Administration:** configuring Microsoft Sentinel, connecting data sources (Log Analytics Workspace), and managing data collection rules.
+* **SIEM Administration:** Configuring Microsoft Sentinel, connecting data sources (Log Analytics Workspace), and managing data collection rules.
 * **KQL (Kusto Query Language):** Writing complex queries to filter logs, extract key data (IP addresses), and generate custom analytics rules.
+* **Azure Automation:** Configuring Runbooks, Managed Identities, and integrating PowerShell scripts with Logic Apps for custom infrastructure management.
+* **PowerShell Scripting:** Writing resilient scripts to handle Azure module version conflicts, input sanitization (Regex), and error handling (try/catch) for production-grade reliability.
 * **SOAR & Automation:** Designing automated workflows using Azure Logic Apps to bridge the gap between security detection and incident response.
 * **Network Security:** Understanding firewall management (Windows Defender Firewall) and public/private IP networking concepts.
-* **Troubleshooting:** Diagnosing and resolving real-world deployment issues, including region-specific policy restrictions and API connector limitations.
+* **Troubleshooting:** Diagnosing and resolving real-world deployment issues, including region-specific policy restrictions, API connector limitations, and module version conflicts.
+
+
 
 ## Future Improvements
 
 * **Email Integration:** Integrate Outlook or Gmail connectors to send detailed email reports to security admins (currently restricted by Azure for Students policy).
+* **IP Retention Policy:** Implement logic to clear blocked IPs after a set period (e.g., 30 days) to prevent the NSG from hitting its maximum capacity limit.
 * **Advanced Analytics:** Develop more sophisticated KQL rules to detect other attack vectors beyond Brute Force (e.g., Port Scanning, Privilege Escalation).
-* **Automated Remediation:** Update the playbook to not just notify, but automatically block the attacker's IP address on the Network Security Group (NSG) level.
 * **Threat Intelligence:** Connect Sentinel to external threat intelligence feeds to correlate attacker IPs with known malicious actors.
-
 
 
 
@@ -193,5 +239,8 @@ By the end of the lab, the map was lighting up with thousands of attacks from al
 
 
 
-<sub>Project End: 12/24/2025</sub>
+<sub>Project End (Part I): 12/24/2025</sub>
+
+
+<sub>Project End (Part II): 1/2/2026</sub>
 
